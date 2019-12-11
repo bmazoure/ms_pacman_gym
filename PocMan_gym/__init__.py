@@ -17,3 +17,27 @@ register(
     entry_point='pocman_gym.envs:PocMan',
     kwargs={'observation_type':'sparse_vector'}
 )
+
+register(
+    id='PocManFullScalar-v0',
+    entry_point='pocman_gym.envs:PocMan',
+    kwargs={'observation_type':'full_scalar'}
+)
+
+register(
+    id='PocManFullector-v0',
+    entry_point='pocman_gym.envs:PocMan',
+    kwargs={'observation_type':'full_vector'}
+)
+
+register(
+    id='PocManFullASCII-v0',
+    entry_point='pocman_gym.envs:PocMan',
+    kwargs={'observation_type':'full_ascii'}
+)
+
+register(
+    id='PocManFullRGB-v0',
+    entry_point='pocman_gym.envs:PocMan',
+    kwargs={'observation_type':'full_rgb'}
+)

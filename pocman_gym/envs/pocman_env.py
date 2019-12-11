@@ -40,6 +40,21 @@ class PocMan(gym.Env):
     """
 
     def __init__(self,observation_type='sparse_scalar'):
+        """
+        Observation types:
+        sparse_vector: 16 bit of RAM with certain bits zeroed out
+        sparse_scalar: sparse_vector but binary encoded
+        full_vector: 16 bit of RAM
+        full_scalar: full_vector but binary encoded
+        full_ascii: ASCII state with the map code defined below
+        full_rgb: full_ascii but color-coded for convnets
+
+        Map code:
+        `x`: wall
+        `o`: food
+        `<|>`: goes to other side
+        `R|P|O|B`: ghost
+        """
         self.observation_type = observation_type
 
         self.INIT_GHOST_POSES = [[7,8],[7,10],[9,8],[9,10]]
@@ -63,7 +78,8 @@ class PocMan(gym.Env):
         """
         self.moveGhosts()
         reward = self.movePacman(action)
-        return self.getCurrentObservation(), reward, self.inTerminalState, {}
+        obs = self.select_obs()
+        return obs, reward, self.inTerminalState, {}
 
     def reset(self):
         """
@@ -80,12 +96,40 @@ class PocMan(gym.Env):
         self.ghostDirs = [-1,-1,-1,-1]
         self.pacManPos = self.INIT_PACMAN_POS
 
-        return self.getCurrentObservationSparse()
+        return self.select_obs()
 
 
     """
     Helper methods
     """
+    def select_obs(self):
+        if self.observation_type == 'full_vector' or self.observation_type == 'full_scalar':
+            obs = self.getCurrentObservation()
+        elif self.observation_type == 'sparse_vector' or self.observation_type == 'sparse_scalar':
+            obs = self.getCurrentObservationSparse()
+        elif self.observation_type == 'full_ascii':
+            obs = self.gameMap
+        elif self.observation_type == 'full_rgb':
+            obs = self.getCurrentObservationFullImage()
+        return obs
+
+    def getCurrentObservationFullImage(self):
+        """
+        ASCII map color-coded as 3-d RGB tensor
+        """
+        screen = 128 * np.ones(self.gameMap.shape).reshape(self.gameMap.shape[0],self.gameMap.shape[1],1).repeat(3,axis=2).astype(int)
+        for y,row in enumerate(self.gameMap):
+            for x,symbol in enumerate(row):
+                if symbol == 'x':
+                    screen[y,x,:] = [0,0,0]
+                if symbol == '.':
+                    screen[y,x,:] = [128,255,128]
+                if symbol == 'o':
+                    screen[y,x,:] = [0,255,255]
+        screen[self.pacManPos[0],self.pacManPos[1],:] = [255,255,0]
+        for i,(y,x) in enumerate(self.ghostPoses):
+            screen[y,x,:] = self.GHOST_COLORS[i]
+        return screen
         
 
     def placeFood(self):
@@ -167,182 +211,176 @@ class PocMan(gym.Env):
         """
         Get the current state's observation for the agent
         """
-        if self.observation_type == 'fully_observable':
-            return self.gameMap
-        if self.observation_type == 'sparse_vector' or self.observation_type == 'sparse_scalar':
-            obs = np.zeros(16)
-            y,x = self.pacManPos
+        obs = np.zeros(16)
+        y,x = self.pacManPos
 
-            obs[0] = int(self.gameMap[y-1][x] == 'x')
-            obs[1] = int(self.gameMap[y][x+1] == 'x')
-            obs[2] = int(self.gameMap[y+1][x] == 'x')
-            obs[3] = int(self.gameMap[y][x-1] == 'x')
+        obs[0] = int(self.gameMap[y-1][x] == 'x')
+        obs[1] = int(self.gameMap[y][x+1] == 'x')
+        obs[2] = int(self.gameMap[y+1][x] == 'x')
+        obs[3] = int(self.gameMap[y][x-1] == 'x')
 
-            food_manhattan = self.computeFoodManhattanDist()
+        food_manhattan = self.computeFoodManhattanDist()
 
-            if food_manhattan <= 2:
-                obs[4] = 1
-            elif food_manhattan <= 3:
-                obs[5] = 1
-            elif food_manhattan <= 4:
-                obs[5] = 1
+        if food_manhattan <= 2:
+            obs[4] = 1
+        elif food_manhattan <= 3:
+            obs[5] = 1
+        elif food_manhattan <= 4:
+            obs[5] = 1
 
-            """
-            NORTH
-            """
-            tempLoc = copy.deepcopy(self.pacManPos)
+        """
+        NORTH
+        """
+        tempLoc = copy.deepcopy(self.pacManPos)
+        tempLoc[0] -= 1
+        while tempLoc[0] > 0 and tempLoc[1] < self.w and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
+            for ghost in self.ghostPoses:
+                if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
+                    obs[11] = 1
+                    break
+            if obs[11] == 1:
+                break
+            if self.gameMap[tempLoc[0],tempLoc[1]] == '.':
+                obs[7] = 1
             tempLoc[0] -= 1
-            while tempLoc[0] > 0 and tempLoc[1] < self.w and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
-                for ghost in self.ghostPoses:
-                    if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
-                        obs[11] = 1
-                        break
-                if obs[11] == 1:
-                    break
-                if self.gameMap[tempLoc[0],tempLoc[1]] == '.':
-                    obs[7] = 1
-                tempLoc[0] -= 1
 
-            """
-            EAST
-            """
-            tempLoc = copy.deepcopy(self.pacManPos)
+        """
+        EAST
+        """
+        tempLoc = copy.deepcopy(self.pacManPos)
+        tempLoc[1] += 1
+        while tempLoc[0] > 0 and tempLoc[1] < self.w and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
+            for ghost in self.ghostPoses:
+                if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
+                    obs[12] = 1
+                    break
+            if obs[12] == 1:
+                break
+            if self.gameMap[tempLoc[0],tempLoc[1]] == '.':
+                obs[8] = 1
             tempLoc[1] += 1
-            while tempLoc[0] > 0 and tempLoc[1] < self.w and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
-                for ghost in self.ghostPoses:
-                    if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
-                        obs[12] = 1
-                        break
-                if obs[12] == 1:
-                    break
-                if self.gameMap[tempLoc[0],tempLoc[1]] == '.':
-                    obs[8] = 1
-                tempLoc[1] += 1
 
-            """
-            SOUTH
-            """
-            tempLoc = copy.deepcopy(self.pacManPos)
+        """
+        SOUTH
+        """
+        tempLoc = copy.deepcopy(self.pacManPos)
+        tempLoc[0] += 1
+        while tempLoc[0] < self.h-1 and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
+            for ghost in self.ghostPoses:
+                if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
+                    obs[13] = 1
+                    break
+            if obs[13] == 1:
+                break
+            if self.gameMap[tempLoc[0],tempLoc[1]] == '.':
+                obs[9] = 1
             tempLoc[0] += 1
-            while tempLoc[0] < self.h-1 and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
-                for ghost in self.ghostPoses:
-                    if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
-                        obs[13] = 1
-                        break
-                if obs[13] == 1:
-                    break
-                if self.gameMap[tempLoc[0],tempLoc[1]] == '.':
-                    obs[9] = 1
-                tempLoc[0] += 1
 
-            """
-            WEST
-            """
-            tempLoc = copy.deepcopy(self.pacManPos)
+        """
+        WEST
+        """
+        tempLoc = copy.deepcopy(self.pacManPos)
+        tempLoc[1] -= 1
+        while tempLoc[1] > 0 and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
+            for ghost in self.ghostPoses:
+                if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
+                    obs[14] = 1
+                    break
+            if obs[14] == 1:
+                break
+            if self.gameMap[tempLoc[0],tempLoc[1]] == '.':
+                obs[10] = 1
             tempLoc[1] -= 1
-            while tempLoc[1] > 0 and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
-                for ghost in self.ghostPoses:
-                    if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
-                        obs[14] = 1
-                        break
-                if obs[14] == 1:
-                    break
-                if self.gameMap[tempLoc[0],tempLoc[1]] == '.':
-                    obs[10] = 1
-                tempLoc[1] -= 1
 
-            obs[15] = int(self.powerPillCounter >= 0)
+        obs[15] = int(self.powerPillCounter >= 0)
 
-            if self.observation_type == 'sparse_vector':
-                return obs
-            if self.observation_type == 'sparse_scalar':
-                return self.computeIntFromBinary(obs)
+        if self.observation_type == 'full_vector':
+            return obs
+        if self.observation_type == 'full_scalar':
+            return self.computeIntFromBinary(obs)
     
     def getCurrentObservationSparse(self):
         """
         Get the current state's observation for the agent, in sparse PocMan
         """
-        if self.observation_type == 'fully_observable':
-            return self.gameMap
-        if self.observation_type == 'sparse_vector' or self.observation_type == 'sparse_scalar':
-            obs = np.zeros(16)
-            y,x = self.pacManPos
+        obs = np.zeros(16)
+        y,x = self.pacManPos
 
-            obs[0] = int(self.gameMap[y-1][x] == 'x')
-            obs[1] = int(self.gameMap[y][x+1] == 'x')
-            obs[2] = int(self.gameMap[y+1][x] == 'x')
-            obs[3] = int(self.gameMap[y][x-1] == 'x')
+        obs[0] = int(self.gameMap[y-1][x] == 'x')
+        obs[1] = int(self.gameMap[y][x+1] == 'x')
+        obs[2] = int(self.gameMap[y+1][x] == 'x')
+        obs[3] = int(self.gameMap[y][x-1] == 'x')
 
-            # food_manhattan = self.computeFoodManhattanDist()
+        # food_manhattan = self.computeFoodManhattanDist()
 
-            # if food_manhattan <= 2:
-            #     obs[4] = 1
-            # elif food_manhattan <= 3:
-            #     obs[5] = 1
-            # elif food_manhattan <= 4:
-            #     obs[5] = 1
+        # if food_manhattan <= 2:
+        #     obs[4] = 1
+        # elif food_manhattan <= 3:
+        #     obs[5] = 1
+        # elif food_manhattan <= 4:
+        #     obs[5] = 1
 
-            """
-            NORTH
-            """
-            tempLoc = copy.deepcopy(self.pacManPos)
+        """
+        NORTH
+        """
+        tempLoc = copy.deepcopy(self.pacManPos)
+        tempLoc[0] -= 1
+        while tempLoc[0] > 0 and tempLoc[1] < self.w and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
+            for ghost in self.ghostPoses:
+                if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
+                    obs[4] = 1
+                    break
+            if obs[4] == 1:
+                break
             tempLoc[0] -= 1
-            while tempLoc[0] > 0 and tempLoc[1] < self.w and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
-                for ghost in self.ghostPoses:
-                    if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
-                        obs[4] = 1
-                        break
-                if obs[4] == 1:
-                    break
-                tempLoc[0] -= 1
 
-            """
-            EAST
-            """
-            tempLoc = copy.deepcopy(self.pacManPos)
+        """
+        EAST
+        """
+        tempLoc = copy.deepcopy(self.pacManPos)
+        tempLoc[1] += 1
+        while tempLoc[0] > 0 and tempLoc[1] < self.w and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
+            for ghost in self.ghostPoses:
+                if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
+                    obs[5] = 1
+            if obs[5] == 1:
+                break
             tempLoc[1] += 1
-            while tempLoc[0] > 0 and tempLoc[1] < self.w and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
-                for ghost in self.ghostPoses:
-                    if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
-                        obs[5] = 1
-                if obs[5] == 1:
-                    break
-                tempLoc[1] += 1
 
-            """
-            SOUTH
-            """
-            tempLoc = copy.deepcopy(self.pacManPos)
+        """
+        SOUTH
+        """
+        tempLoc = copy.deepcopy(self.pacManPos)
+        tempLoc[0] += 1
+        while tempLoc[0] < self.h-1 and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
+            for ghost in self.ghostPoses:
+                if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
+                    obs[6] = 1
+                    break
+            if obs[6] == 1:
+                break
             tempLoc[0] += 1
-            while tempLoc[0] < self.h-1 and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
-                for ghost in self.ghostPoses:
-                    if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
-                        obs[6] = 1
-                        break
-                if obs[6] == 1:
-                    break
-                tempLoc[0] += 1
 
-            """
-            WEST
-            """
-            tempLoc = copy.deepcopy(self.pacManPos)
+        """
+        WEST
+        """
+        tempLoc = copy.deepcopy(self.pacManPos)
+        tempLoc[1] -= 1
+        while tempLoc[1] > 0 and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
+            for ghost in self.ghostPoses:
+                if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
+                    obs[7] = 1
+                    break
+            if obs[7] == 1:
+                break
             tempLoc[1] -= 1
-            while tempLoc[1] > 0 and self.gameMap[tempLoc[0],tempLoc[1]] != 'x':
-                for ghost in self.ghostPoses:
-                    if tempLoc[0] == ghost[0] and tempLoc[1] == ghost[1]:
-                        obs[7] = 1
-                        break
-                if obs[7] == 1:
-                    break
-                tempLoc[1] -= 1
 
-            obs[8] = int(self.powerPillCounter >= 0)
+        obs[8] = int(self.powerPillCounter >= 0)
 
-            if self.observation_type == 'sparse_vector':
-                return obs
-            if self.observation_type == 'sparse_scalar':
-                return self.computeIntFromBinary(obs)
+        if self.observation_type == 'sparse_vector':
+            return obs
+        if self.observation_type == 'sparse_scalar':
+            return self.computeIntFromBinary(obs)
 
     def getCurrentObservationAction(self,action):
         """
