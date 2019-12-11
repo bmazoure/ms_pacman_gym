@@ -66,10 +66,14 @@ class PocMan(gym.Env):
         self.NUM_ACTS = 4
         self.NUM_OBS = int(2**16)
 
-        self.state_space = spaces.Box(low=np.array([0,0],dtype=int),high=np.array([21,16],dtype=int))
+        self._height = len(INIT_GAME_MAP)
+        self._width = len(INIT_GAME_MAP[0])
+
+        self.reset() # assigns observation_space too
+
         self.action_space = spaces.Discrete(4)
 
-        self.reset()
+        
 
     def step(self, action):
         """
@@ -103,14 +107,54 @@ class PocMan(gym.Env):
     Helper methods
     """
     def select_obs(self):
-        if self.observation_type == 'full_vector' or self.observation_type == 'full_scalar':
+        if self.observation_type == 'full_vector':
             obs = self.getCurrentObservation()
-        elif self.observation_type == 'sparse_vector' or self.observation_type == 'sparse_scalar':
+            self.observation_space = gym.spaces.Box(
+                                            low=0,
+                                            high=1,
+                                            shape=(16),
+                                            dtype=np.uint8,
+                                        )
+        elif self.observation_type == 'full_scalar':
+            obs = self.getCurrentObservation()
+            self.observation_space = gym.spaces.Box(
+                                            low=0,
+                                            high=self.NUM_OBS,
+                                            shape=(1),
+                                            dtype=np.uint8,
+                                        )
+        elif self.observation_type == 'sparse_vector':
             obs = self.getCurrentObservationSparse()
+            self.observation_space = gym.spaces.Box(
+                                            low=0,
+                                            high=1,
+                                            shape=(16),
+                                            dtype=np.uint8,
+                                        )
+        elif self.observation_type == 'sparse_scalar':
+            obs = self.getCurrentObservationSparse()
+            self.observation_space = gym.spaces.Box(
+                                            low=0,
+                                            high=self.NUM_OBS,
+                                            shape=(1),
+                                            dtype=np.uint8,
+                                        )
         elif self.observation_type == 'full_ascii':
             obs = self.gameMap
+            self.observation_space = gym.spaces.Box(
+                                            low=0,
+                                            high=255,
+                                            shape=(self._height, self._width),
+                                            dtype=np.str,
+                                        )
         elif self.observation_type == 'full_rgb':
             obs = self.getCurrentObservationFullImage()
+            self.observation_space = gym.spaces.Box(
+                                            low=0,
+                                            high=255,
+                                            shape=(self._height, self._width, 3),
+                                            dtype=np.uint8,
+                                        )
         return obs
 
     def getCurrentObservationFullImage(self):
