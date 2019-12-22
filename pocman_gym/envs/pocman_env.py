@@ -66,6 +66,8 @@ class PocMan(gym.Env):
         self.NUM_ACTS = 4
         self.NUM_OBS = int(2**16)
 
+        self.harmless_ghosts = []
+
         self._height = len(INIT_GAME_MAP)
         self._width = len(INIT_GAME_MAP[0])
 
@@ -219,7 +221,7 @@ class PocMan(gym.Env):
         l_reward = -1
         for i,ghost in enumerate(self.ghostPoses):
             if ghost[0] == self.pacManPos[0] and ghost[1] == self.pacManPos[1]:
-                if self.powerPillCounter >= 0:
+                if self.powerPillCounter >= 0 or i in self.harmless_ghosts:
                     l_reward += 25
                     self.resetGhost(i)
                 else:
