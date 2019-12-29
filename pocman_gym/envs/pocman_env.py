@@ -75,6 +75,8 @@ class PocMan(gym.Env):
 
         self.action_space = spaces.Discrete(4)
 
+        self.placeFood()
+
         
 
     def step(self, action):
@@ -93,8 +95,9 @@ class PocMan(gym.Env):
         """
         self.inTerminalState = False
         self.currImmediateReward = -1
-        self.foodLeft = 7
+        self.foodLeft = 0
         self.powerPillCounter = 0
+        self.food_place_prob = 0.5
 
         self.gameMap = np.array(INIT_GAME_MAP)
         self.h, self.w = self.gameMap.shape
@@ -185,7 +188,7 @@ class PocMan(gym.Env):
         self.foodLeft = 0
         for y in range(self.h-1):
             for x in range(self.w):
-                if self.gameMap[y][x] == ' ' and (np.random.uniform() < 0.1) and (y != self.pacManPos[0]) and (x != self.pacManPos[1]) and not (y > 6 and y < 12 and x > 5 and x < 13):
+                if self.gameMap[y][x] == ' ' and (np.random.uniform() < self.food_place_prob) and (y != self.pacManPos[0]) and (x != self.pacManPos[1]) and not (y > 6 and y < 12 and x > 5 and x < 13):
                     self.gameMap[y][x] = '.'
                     self.foodLeft += 1
 
@@ -630,6 +633,11 @@ class PocMan(gym.Env):
         screen[self.pacManPos[0],self.pacManPos[1],:] = [255,255,0]
         for i,(y,x) in enumerate(self.ghostPoses):
             screen[y,x,:] = self.GHOST_COLORS[i]
+        if len(self.harmless_ghosts):
+            for i in range(4):
+                if i not in self.harmless_ghosts:
+                    screen[0,0,:] = self.GHOST_COLORS[i]
+
         fig,ax = plt.subplots(1)
         plt.imshow(screen)
         ax.set_yticklabels([])
