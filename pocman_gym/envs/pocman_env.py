@@ -4,30 +4,6 @@ import copy
 import matplotlib.pyplot as plt
 from gym import spaces
 
-INIT_GAME_MAP = [
-    ['x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x'],
-    ['x',' ',' ','.',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','.',' ',' ','x'],
-    ['x',' ','x','x',' ','x','x','x',' ','x',' ','x','x','x',' ','x','x',' ','x'],
-    ['x','o',' ',' ',' ',' ',' ',' ',' ','.',' ',' ',' ',' ',' ',' ',' ','o','x'],
-    ['x',' ','x','x',' ','x',' ','x','x','x','x','x',' ','x',' ','x','x',' ','x'],
-    ['x',' ',' ',' ',' ','x',' ',' ',' ','x',' ',' ',' ','x',' ',' ',' ',' ','x'],
-    ['x','x','x','x',' ','x','x','x',' ','x',' ','x','x','x',' ','x','x','x','x'],
-    ['x','x','x','x',' ','x',' ',' ',' ',' ',' ',' ',' ','x',' ','x','x','x','x'],
-    ['x','x','x','x',' ','x',' ','x',' ','.',' ','x',' ','x',' ','x','x','x','x'],
-    ['<',' ',' ',' ',' ','x',' ','x',' ',' ',' ','x',' ','x',' ',' ',' ',' ','>'],
-    ['x','x','x','x',' ','x',' ','x','x','x','x','x',' ','x',' ','x','x','x','x'],
-    ['x','x','x','x',' ','x',' ',' ',' ',' ',' ',' ',' ','x',' ','x','x','x','x'],
-    ['x','x','x','x',' ','x',' ','x','x','x','x','x',' ','x',' ','x','x','x','x'],
-    ['x',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','x'],
-    ['x',' ','x','x',' ','x','x','x',' ','x',' ','x','x','x',' ','x','x',' ','x'],
-    ['x','o',' ','x',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','x',' ','o','x'],
-    ['x','x',' ','x',' ','x',' ','x','x','x','x','x',' ','x',' ','x',' ','x','x'],
-    ['x',' ','.',' ',' ','x',' ',' ',' ','x',' ',' ',' ','x',' ',' ','.',' ','x'],
-    ['x',' ','x','x','x','x','x','x',' ','x',' ','x','x','x','x','x','x',' ','x'],
-    ['x',' ',' ',' ',' ',' ',' ',' ',' ','.',' ',' ',' ',' ',' ',' ',' ',' ','x'],
-    ['x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x']
-]
-
 
 class PocMan(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -39,7 +15,7 @@ class PocMan(gym.Env):
      `R|P|O|B`: ghost
     """
 
-    def __init__(self,observation_type='sparse_scalar'):
+    def __init__(self,observation_type='sparse_scalar',harmless_ghosts=[],wall_place_prob=0):
         """
         Observation types:
         sparse_vector: 16 bit of RAM with certain bits zeroed out
@@ -55,6 +31,29 @@ class PocMan(gym.Env):
         `<|>`: goes to other side
         `R|P|O|B`: ghost
         """
+        self.INIT_GAME_MAP = [
+            ['x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x'],
+            ['x',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','x'],
+            ['x',' ','x','x',' ','x','x','x',' ','x',' ','x','x','x',' ','x','x',' ','x'],
+            ['x','o',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','o','x'],
+            ['x',' ','x','x',' ','x',' ','x','x','x','x','x',' ','x',' ','x','x',' ','x'],
+            ['x',' ',' ',' ',' ','x',' ',' ',' ','x',' ',' ',' ','x',' ',' ',' ',' ','x'],
+            ['x','x','x','x',' ','x','x','x',' ','x',' ','x','x','x',' ','x','x','x','x'],
+            ['x','x','x','x',' ','x',' ',' ',' ',' ',' ',' ',' ','x',' ','x','x','x','x'],
+            ['x','x','x','x',' ','x',' ','x',' ',' ',' ','x',' ','x',' ','x','x','x','x'],
+            ['<',' ',' ',' ',' ','x',' ','x',' ',' ',' ','x',' ','x',' ',' ',' ',' ','>'],
+            ['x','x','x','x',' ','x',' ','x','x','x','x','x',' ','x',' ','x','x','x','x'],
+            ['x','x','x','x',' ','x',' ',' ',' ',' ',' ',' ',' ','x',' ','x','x','x','x'],
+            ['x','x','x','x',' ','x',' ','x','x','x','x','x',' ','x',' ','x','x','x','x'],
+            ['x',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','x'],
+            ['x',' ','x','x',' ','x','x','x',' ','x',' ','x','x','x',' ','x','x',' ','x'],
+            ['x','o',' ','x',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','x',' ','o','x'],
+            ['x','x',' ','x',' ','x',' ','x','x','x','x','x',' ','x',' ','x',' ','x','x'],
+            ['x',' ',' ',' ',' ','x',' ',' ',' ','x',' ',' ',' ','x',' ',' ',' ',' ','x'],
+            ['x',' ','x','x','x','x','x','x',' ','x',' ','x','x','x','x','x','x',' ','x'],
+            ['x',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','x'],
+            ['x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x']
+        ]
         self.observation_type = observation_type
 
         self.INIT_GHOST_POSES = [[7,8],[7,10],[9,8],[9,10]]
@@ -65,16 +64,19 @@ class PocMan(gym.Env):
         self.DEFENSIVE_SLIP = 0.25
         self.NUM_ACTS = 4
         self.NUM_OBS = int(2**16)
+        
+        self.harmless_ghosts = harmless_ghosts
+        self.wall_place_prob = wall_place_prob
 
-        self.harmless_ghosts = []
-
-        self._height = len(INIT_GAME_MAP)
-        self._width = len(INIT_GAME_MAP[0])
+        self._height = len(self.INIT_GAME_MAP)
+        self._width = len(self.INIT_GAME_MAP[0])
 
         self.reset() # assigns observation_space too
 
         self.action_space = spaces.Discrete(4)
 
+        if self.wall_place_prob > 0:
+            self.placeWalls()
         self.placeFood()
 
         
@@ -99,7 +101,7 @@ class PocMan(gym.Env):
         self.powerPillCounter = 0
         self.food_place_prob = 0.5
 
-        self.gameMap = np.array(INIT_GAME_MAP)
+        self.gameMap = np.array(self.INIT_GAME_MAP)
         self.h, self.w = self.gameMap.shape
         self.ghostPoses = np.array(self.INIT_GHOST_POSES)
         self.ghostDirs = [-1,-1,-1,-1]
@@ -178,6 +180,7 @@ class PocMan(gym.Env):
         screen[self.pacManPos[0],self.pacManPos[1],:] = [255,255,0]
         for i,(y,x) in enumerate(self.ghostPoses):
             screen[y,x,:] = self.GHOST_COLORS[i]
+
         if len(self.harmless_ghosts):
             for i in range(4):
                 if i not in self.harmless_ghosts:
@@ -187,14 +190,23 @@ class PocMan(gym.Env):
 
     def placeFood(self):
         """
-        For every grid, if it is empty, and w.p. 0.1, place some food into that tile
+        For every grid, if it is empty, and w.p. P_food, place some food into that tile
         """
         self.foodLeft = 0
         for y in range(self.h-1):
             for x in range(self.w):
-                if self.gameMap[y][x] == ' ' and (np.random.uniform() < self.food_place_prob) and (y != self.pacManPos[0]) and (x != self.pacManPos[1]) and not (y > 6 and y < 12 and x > 5 and x < 13):
-                    self.gameMap[y][x] = '.'
+                if self.INIT_GAME_MAP[y][x] == ' ' and (np.random.uniform() < self.food_place_prob) and (y != self.pacManPos[0]) and (x != self.pacManPos[1]) and not (y > 6 and y < 12 and x > 5 and x < 13):
+                    self.INIT_GAME_MAP[y][x] = '.'
                     self.foodLeft += 1
+
+    def placeWalls(self):
+        """
+        For every grid, if it is empty, and w.p. P_walls, place a wall into that tile
+        """
+        for y in range(self.h-1):
+            for x in range(self.w):
+                if self.INIT_GAME_MAP[y][x] == ' ' and (np.random.uniform() < self.wall_place_prob) and (y != self.pacManPos[0]) and (x != self.pacManPos[1]) and not (y > 6 and y < 12 and x > 5 and x < 13):
+                    self.INIT_GAME_MAP[y][x] = 'x'
 
     def computeIntFromBinary(self,arr):
         """
