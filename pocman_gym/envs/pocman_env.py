@@ -178,6 +178,10 @@ class PocMan(gym.Env):
         screen[self.pacManPos[0],self.pacManPos[1],:] = [255,255,0]
         for i,(y,x) in enumerate(self.ghostPoses):
             screen[y,x,:] = self.GHOST_COLORS[i]
+        if len(self.harmless_ghosts):
+            for i in range(4):
+                if i not in self.harmless_ghosts:
+                    screen[0,0,:] = self.GHOST_COLORS[i]
         return screen
         
 
