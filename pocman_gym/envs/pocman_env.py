@@ -15,7 +15,12 @@ class PocMan(gym.Env):
      `R|P|O|B`: ghost
     """
 
-    def __init__(self,observation_type='sparse_scalar',harmless_ghosts=[],wall_place_prob=0,food_place_prob=0.2):
+    def __init__(self,
+                 observation_type='sparse_scalar',
+                 harmless_ghosts=[],
+                 ghost_random_move_prob=[0.,0.,0.,0.],
+                 wall_place_prob=0,
+                 food_place_prob=0.2):
         """
         Observation types:
         sparse_vector: 16 bit of RAM with certain bits zeroed out
@@ -66,6 +71,7 @@ class PocMan(gym.Env):
         self.NUM_OBS = int(2**16)
         
         self.harmless_ghosts = harmless_ghosts
+        self.ghost_random_move_prob = ghost_random_move_prob
         self.wall_place_prob = wall_place_prob
         self.food_place_prob = food_place_prob
 
@@ -241,15 +247,15 @@ class PocMan(gym.Env):
         for i,ghost in enumerate(self.ghostPoses):
             if ghost[0] == self.pacManPos[0] and ghost[1] == self.pacManPos[1]:
                 if self.powerPillCounter >= 0 or i in self.harmless_ghosts:
-                    l_reward += 25
+                    l_reward += 50
                     self.resetGhost(i)
                 else:
-                    l_reward -= 50
+                    l_reward -= 100
                     self.inTerminalState = True
         
         if self.gameMap[self.pacManPos[0],self.pacManPos[1]] == '.':
             self.gameMap[self.pacManPos[0],self.pacManPos[1]] = ' '
-            l_reward += 100
+            l_reward += 25
             self.foodLeft -= 1
             if self.foodLeft == 0:
                 self.inTerminalState = True
@@ -533,8 +539,9 @@ class PocMan(gym.Env):
             -Random move
         """
         for i,ghost in enumerate(self.ghostPoses):
-            old_pos = self.ghostPoses[i].copy()
-            if abs(ghost[0]-self.pacManPos[0]) + abs(ghost[1]-self.pacManPos[1]) <= 5:
+            u = np.random.uniform(size=(1,)).item()
+            
+            if ( abs(ghost[0]-self.pacManPos[0]) + abs(ghost[1]-self.pacManPos[1]) <= 5 ) and u > self.ghost_random_move_prob[i]:
                 if self.powerPillCounter < 0:
                     # print('Aggressive')
                     self.ghostDirs[i] = self.moveGhostAggressive(i)
@@ -544,9 +551,6 @@ class PocMan(gym.Env):
             else:
                 # print('Random')
                 self.ghostDirs[i] = self.moveGhostRandom(i)
-        #     print('[%d,%d]->[%d,%d] (Ghost %d)'%(old_pos[0],old_pos[1],self.ghostPoses[i][0],self.ghostPoses[i][1],i))
-        #     print()
-        # print('###')
             
 
     def moveGhostAggressive(self,i_ghost):
@@ -664,14 +668,40 @@ class PocMan(gym.Env):
 
 
 if __name__ == '__main__':
-    env = PocMan(observation_type='sparse_vector')
-    print(env.state_space.high)
-    print(env.action_space.n)
-    obs = env.reset()
-    env.pretty_plot()
-    # print(obs)
-    obs, reward, done, _ = env.step(3)
-    # print(obs)
-    # print(reward)
-    
-    # env.pretty_print()
+    import sys,tty,termios
+    class _Getch:
+        def __call__(self):
+                fd = sys.stdin.fileno()
+                old_settings = termios.tcgetattr(fd)
+                try:
+                    tty.setraw(sys.stdin.fileno())
+                    ch = sys.stdin.read(3)
+                finally:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                return ch
+    def get():
+        inkey = _Getch()
+        while(1):
+                k=inkey()
+                if k!='':break
+        if k=='\x1b[A':
+                return 0
+        elif k=='\x1b[B':
+                return 3
+        elif k=='\x1b[C':
+                return 1
+        elif k=='\x1b[D':
+                return 2
+
+    env = PocMan(observation_type='full_rgb',ghost_random_move_prob=[1.,1.,1.,1.])
+    x = env.reset()
+    done = False
+    plt.imshow(x)
+    plt.pause(0.05)
+    while not done:
+        action = get()
+        x, r, done , _ = env.step(action)
+        print(env.ACTION_NAMES[action]+' '+str(r))
+        plt.imshow(x)
+        plt.pause(0.05)
+    plt.show()
