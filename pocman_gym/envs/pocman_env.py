@@ -15,7 +15,7 @@ class PocMan(gym.Env):
      `R|P|O|B`: ghost
     """
 
-    def __init__(self,observation_type='sparse_scalar',harmless_ghosts=[],wall_place_prob=0):
+    def __init__(self,observation_type='sparse_scalar',harmless_ghosts=[],wall_place_prob=0,food_place_prob=0.2):
         """
         Observation types:
         sparse_vector: 16 bit of RAM with certain bits zeroed out
@@ -67,6 +67,7 @@ class PocMan(gym.Env):
         
         self.harmless_ghosts = harmless_ghosts
         self.wall_place_prob = wall_place_prob
+        self.food_place_prob = food_place_prob
 
         self._height = len(self.INIT_GAME_MAP)
         self._width = len(self.INIT_GAME_MAP[0])
@@ -99,7 +100,6 @@ class PocMan(gym.Env):
         self.currImmediateReward = -1
         self.foodLeft = 0
         self.powerPillCounter = 0
-        self.food_place_prob = 0.5
 
         self.gameMap = np.array(self.INIT_GAME_MAP)
         self.h, self.w = self.gameMap.shape
@@ -181,10 +181,10 @@ class PocMan(gym.Env):
         for i,(y,x) in enumerate(self.ghostPoses):
             screen[y,x,:] = self.GHOST_COLORS[i]
 
-        if len(self.harmless_ghosts):
-            for i in range(4):
-                if i not in self.harmless_ghosts:
-                    screen[0,0,:] = self.GHOST_COLORS[i]
+        # if len(self.harmless_ghosts):
+        #     for i in range(4):
+        #         if i not in self.harmless_ghosts:
+        #             screen[0,0,:] = self.GHOST_COLORS[i]
         return screen
         
 
