@@ -1,6 +1,7 @@
 # Ms PacMan, OpenAI Gym version
 Partially and fully observable PacMan games in OpenAI Gym format
 
+![](rgb_snapshot.png)
 
 ## Install
 
