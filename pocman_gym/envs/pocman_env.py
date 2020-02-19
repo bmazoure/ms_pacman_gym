@@ -247,15 +247,15 @@ class PocMan(gym.Env):
         for i,ghost in enumerate(self.ghostPoses):
             if ghost[0] == self.pacManPos[0] and ghost[1] == self.pacManPos[1]:
                 if self.powerPillCounter >= 0 or i in self.harmless_ghosts:
-                    l_reward += 50
+                    l_reward += 25
                     self.resetGhost(i)
                 else:
-                    l_reward -= 100
+                    l_reward -= 50
                     self.inTerminalState = True
         
         if self.gameMap[self.pacManPos[0],self.pacManPos[1]] == '.':
             self.gameMap[self.pacManPos[0],self.pacManPos[1]] = ' '
-            l_reward += 25
+            l_reward += 100
             self.foodLeft -= 1
             if self.foodLeft == 0:
                 self.inTerminalState = True
