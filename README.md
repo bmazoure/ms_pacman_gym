@@ -1,5 +1,5 @@
-# PocMan_gym
-Partially observable PacMan game in OpenAI Gym format
+# Ms PacMan, OpenAI Gym version
+Partially and fully observable PacMan games in OpenAI Gym format
 
 
 ## Install
@@ -7,14 +7,14 @@ Partially observable PacMan game in OpenAI Gym format
 To install, do either
 
 ```
-git clone https://github.com/bmazoure/PocMan_gym.git
-cd PocMan_gym
+git clone https://github.com/bmazoure/ms_pacman_gym.git
+cd ms_pacman_gym
 pip install -e .
 ```
 
 or directly
 ```
-pip install git+https://github.com/bmazoure/PocMan_gym.git
+pip install git+https://github.com/bmazoure/ms_pacman_gym.git
 ```
 
 ## Environment
